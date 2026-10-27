@@ -44,11 +44,24 @@ docker compose -f docker-compose.base44.yml run --rm migrate
   free-to-use licence) so pages never depend on a third-party host. Card/hero images are the 1400px
   files, gallery thumbnails the `-thumb.jpg` 600px files. Fonts are self-hosted in
   `frontend/public/fonts` (latin subsets) — no external font or image requests at runtime.
-- **The home hero uses a supplied 736×480 reference photo** (`frontend/public/images/hero-dusk-villa.jpg`,
-  referenced from `Hero.jsx` and the preload in `index.html`). The source file was a full design
-  screenshot with its own header and headline baked in; those were removed so the live nav and copy
-  are not duplicated. Replace it with a text-free photo at ≥1600px wide when one is available — the
-  hero is full-bleed, so the current file is upscaled on large screens.
+- **The home hero is a scroll-scrubbed film, not a video player.** `components/home/Hero.jsx` picks
+  between `ScrollVideoHero` (default) and a still `StillHero` for `prefers-reduced-motion`. The video
+  never plays: a 300vh section pins a 100svh sticky stage and scroll progress 0→1 is mapped onto
+  `video.currentTime` 0→duration inside one rAF loop (`SMOOTHING` lerp + a >0.02s write threshold).
+  Keep it that way — calling `play()`, adding `loop`/`autoPlay`, or writing `currentTime` straight
+  from a scroll handler all break the effect. The header stays transparent while `#home-hero` is
+  pinned (see `Header.jsx`).
+- **Hero video encoding is the performance budget.** Scrubbing decodes from the nearest keyframe, so
+  the files in `frontend/public/videos/` are re-encodes of the supplied master (which had 2 keyframes
+  over 9s and stutters): 1168×768 H.264 at CRF 23, `-g 8 -keyint_min 8 -sc_threshold 0`,
+  `+faststart`, no audio (`hero-scrub.mp4`, 5.7 MB), an 854px `hero-scrub-mobile.mp4` (2.9 MB,
+  chosen at mount below 768px — `media` on a `<source>` in `<video>` is ignored by browsers), and a
+  VP9 `hero-scrub.webm` fallback. When replacing the film, keep a short GOP, faststart and a sane
+  bitrate, or the experience will stutter no matter what the JS does. `images/hero-video-poster.jpg`
+  is frame 0 and doubles as the poster/fallback layer.
+- **The hero still photo** (`frontend/public/images/hero-dusk-villa.jpg`) is the reduced-motion
+  visual (and the photo the film was made from). It came from a 736×480 design screenshot with its
+  own header and headline baked in; those were removed so the live nav and copy are not duplicated.
 - **Contrast tokens are load-bearing.** `champagne-deep` (#8A6A28) and `ink-faint` (#6E7684) exist
   specifically to reach ≥4.5:1 text contrast on white. Do not swap them back to the decorative gold
   (#C5A059) or a lighter grey for small text; use `champagne` / `champagne-soft` only on navy

@@ -1,9 +1,15 @@
+import { useEffect, useState } from 'react';
+
+import HeroCopy from './HeroCopy.jsx';
+import ScrollVideoHero from './ScrollVideoHero.jsx';
+
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
 /**
- * Full-bleed architectural hero: the headline and supporting line sit in the
- * upper-middle of a cinematic villa image, with a calm entrance animation and a
- * gradient that settles into the white section below.
+ * Still hero — the photograph on its own. This is the experience for anyone who
+ * asks for reduced motion, and the visual the cinematic version degrades to.
  */
-export default function Hero() {
+function StillHero() {
   return (
     <section className="relative isolate flex min-h-[600px] items-center overflow-hidden bg-navy pt-[68px] lg:h-[calc(100svh-0px)] lg:max-h-[940px] lg:min-h-[700px] lg:pt-[76px]">
       <img
@@ -13,22 +19,12 @@ export default function Hero() {
         decoding="async"
         className="absolute inset-0 h-full w-full animate-image-in object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-navy/88 via-navy/45 to-navy/80" aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-gradient-to-b from-navy/88 via-navy/45 to-navy/80"
+        aria-hidden="true"
+      />
 
-      <div className="shell relative z-10 -mt-6 flex w-full flex-col items-center text-center sm:-mt-10">
-        <h1 className="max-w-4xl animate-fade-up text-balance text-display-xl text-white">
-          Discover Exceptional
-          <br className="hidden sm:block" /> Homes &amp; Investments
-        </h1>
-
-        <p
-          className="mt-6 max-w-2xl animate-fade-up text-[1rem] leading-relaxed text-white/80 sm:text-[1.06rem]"
-          style={{ animationDelay: '120ms' }}
-        >
-          Premium properties in prime locations. Find your dream home or the perfect investment with
-          confidence.
-        </p>
-      </div>
+      <HeroCopy className="shell relative z-10 -mt-6 flex w-full flex-col items-center text-center sm:-mt-10" />
 
       <div
         aria-hidden="true"
@@ -36,4 +32,23 @@ export default function Hero() {
       />
     </section>
   );
+}
+
+/**
+ * The home hero: a scroll-driven 3D film on the right device, the still frame
+ * for visitors who prefer reduced motion.
+ */
+export default function Hero() {
+  const [reduced, setReduced] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(REDUCED_MOTION).matches,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(REDUCED_MOTION);
+    const onChange = (event) => setReduced(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  return reduced ? <StillHero /> : <ScrollVideoHero />;
 }

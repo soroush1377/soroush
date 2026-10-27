@@ -24,12 +24,20 @@ export default function Header() {
 
   const transparent = pathname === '/' && !scrolled;
 
+  // The home hero pins the viewport for its scroll-driven film, so the bar stays
+  // transparent for that whole section and only turns solid once it is over.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => {
+      const hero = pathname === '/' ? document.getElementById('home-hero') : null;
+      // Transparent for as long as the sticky hero is still pinned (its bottom
+      // edge below the fold), solid once the white section underneath arrives.
+      const pinned = hero ? hero.getBoundingClientRect().bottom > window.innerHeight : false;
+      setScrolled(!pinned && window.scrollY > 24);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -56,7 +64,7 @@ export default function Header() {
     <header
       className={classNames(
         'fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow,backdrop-filter] duration-500 ease-premium',
-        transparent ? 'bg-transparent' : 'bg-white/92 shadow-header backdrop-blur-md',
+        transparent ? 'bg-transparent' : 'bg-white/95 shadow-header backdrop-blur-md',
       )}
     >
       <div className="shell flex h-[68px] items-center justify-between gap-6 lg:h-[76px]">
