@@ -1,0 +1,11 @@
+# node / build output
+node_modules/
+dist/
+*.log
+
+# local environment files (Base44 secrets arrive at /run/base44/app.env instead)
+.env
+.env.local
+.env.*.local
+
+.DS_Store

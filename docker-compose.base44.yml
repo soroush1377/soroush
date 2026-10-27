@@ -1,0 +1,124 @@
+# Base44 sandbox runbook for Horizon Properties.
+#
+# Three tiers: Postgres (infrastructure), an Express API, and a Vite dev server.
+# Every application service runs FROM THE CLONED SOURCE on a plain runtime image
+# with the repo bind-mounted, so edits are picked up without rebuilding images.
+#
+# Single-origin wiring: only port 3000 is public. Browser API calls hit /api on
+# the Vite dev server, which proxies them to the api service.
+
+name: horizon-properties
+
+services:
+  db:
+    image: postgres:16
+    restart: on-failure
+    environment:
+      POSTGRES_USER: horizon
+      POSTGRES_PASSWORD: horizon_dev_password
+      POSTGRES_DB: horizon
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U horizon -d horizon']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    labels:
+      base44.project: 'Horizon Properties Database'
+      base44.kind: infra
+
+  # One-shot: applies schema.sql and upserts the property catalogue, then exits.
+  migrate:
+    image: node:22
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - backend-node-modules:/app/node_modules
+    environment:
+      DATABASE_URL: postgres://horizon:horizon_dev_password@db:5432/horizon
+    command: ['sh', '-ec', 'npm install --no-audit --no-fund && node src/migrate.js']
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      base44.project: 'Horizon Properties Migrations'
+      base44.kind: worker
+
+  api:
+    image: node:22
+    restart: on-failure
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - backend-node-modules:/app/node_modules
+    environment:
+      - PORT=8000
+      - DATABASE_URL=postgres://horizon:horizon_dev_password@db:5432/horizon
+      # Only used when the API is reached directly on :8000; the preview is single-origin.
+      - CORS_ORIGINS=https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
+      - BASE44_PREVIEW_MODE
+    command: ['sh', '-ec', 'npm install --no-audit --no-fund && exec npm run dev']
+    ports:
+      - '8000:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:8000/api/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    labels:
+      base44.project: 'Horizon Properties API'
+      base44.kind: api
+      base44.port: 8000
+      base44.docs: /api/health
+
+  web:
+    image: node:22
+    restart: on-failure
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      - API_PROXY_TARGET=http://api:8000
+      # Read by vite.config.js to widen the host allowlist in the sandbox only.
+      - BASE44_PREVIEW_MODE
+      - BASE44_SANDBOX_HOST_DOMAIN
+      # Vite >= 6.1 appends this to allowedHosts.
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    command: ['sh', '-ec', 'npm install --no-audit --no-fund && exec npm run dev']
+    ports:
+      - '3000:5173'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:5173/'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+    labels:
+      base44.project: 'Horizon Properties'
+      base44.kind: web
+      base44.port: 3000
+
+volumes:
+  db-data:
+  backend-node-modules:
+  frontend-node-modules:
