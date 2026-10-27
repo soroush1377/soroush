@@ -44,6 +44,11 @@ docker compose -f docker-compose.base44.yml run --rm migrate
   free-to-use licence) so pages never depend on a third-party host. Card/hero images are the 1400px
   files, gallery thumbnails the `-thumb.jpg` 600px files. Fonts are self-hosted in
   `frontend/public/fonts` (latin subsets) — no external font or image requests at runtime.
+- **The home hero uses a supplied 736×480 reference photo** (`frontend/public/images/hero-dusk-villa.jpg`,
+  referenced from `Hero.jsx` and the preload in `index.html`). The source file was a full design
+  screenshot with its own header and headline baked in; those were removed so the live nav and copy
+  are not duplicated. Replace it with a text-free photo at ≥1600px wide when one is available — the
+  hero is full-bleed, so the current file is upscaled on large screens.
 - **Contrast tokens are load-bearing.** `champagne-deep` (#8A6A28) and `ink-faint` (#6E7684) exist
   specifically to reach ≥4.5:1 text contrast on white. Do not swap them back to the decorative gold
   (#C5A059) or a lighter grey for small text; use `champagne` / `champagne-soft` only on navy

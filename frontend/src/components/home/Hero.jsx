@@ -7,7 +7,7 @@ export default function Hero() {
   return (
     <section className="relative isolate flex min-h-[600px] items-center overflow-hidden bg-navy pt-[68px] lg:h-[calc(100svh-0px)] lg:max-h-[940px] lg:min-h-[700px] lg:pt-[76px]">
       <img
-        src="/images/hero.jpg"
+        src="/images/hero-dusk-villa.jpg"
         alt="Modern luxury villa with an illuminated infinity pool at dusk"
         {...{ fetchpriority: 'high' }}
         decoding="async"
